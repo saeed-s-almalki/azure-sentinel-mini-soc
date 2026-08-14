@@ -1,0 +1,22 @@
+// ── Verify data ingestion into Microsoft Sentinel ──
+
+// 1) Windows Security Events arriving?
+SecurityEvent
+| summarize Count = count() by EventID
+| order by Count desc
+
+// 2) Most recent 10 security events
+SecurityEvent
+| project TimeGenerated, Computer, Account, EventID, Activity
+| order by TimeGenerated desc
+| take 10
+
+// 3) Sysmon events present? (process creation = EventID 1)
+Event
+| where Source == "Microsoft-Windows-Sysmon"
+| summarize Count = count() by EventID
+| order by EventID asc
+
+// 4) Which hosts are reporting, and how recently?
+SecurityEvent
+| summarize LastSeen = max(TimeGenerated), Events = count() by Computer

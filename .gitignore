@@ -1,0 +1,18 @@
+# Secrets / credentials — never commit
+*.secret
+*.pem
+*.key
+.env
+credentials*
+*workspace-id*
+*subscription-id*
+
+# OS / editor
+Thumbs.db
+.DS_Store
+desktop.ini
+.vscode/
+
+# Local notes
+scratch/
+*.local.md

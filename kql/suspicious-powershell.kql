@@ -1,0 +1,19 @@
+// Detection: Suspicious PowerShell execution
+// Data: Sysmon EventID 1 (process create) — or Security 4688 / PowerShell 4104
+// MITRE ATT&CK: T1059.001 (Command and Scripting Interpreter: PowerShell)
+// Logic: powershell.exe with encoded/hidden/download flags.
+
+Event
+| where Source == "Microsoft-Windows-Sysmon" and EventID == 1
+| extend RD = parse_xml(EventData)
+| extend Image = tostring(RD.EventData.Data[4]["#text"]),
+         CommandLine = tostring(RD.EventData.Data[10]["#text"]),
+         User = tostring(RD.EventData.Data[12]["#text"])
+| where Image endswith "powershell.exe" or Image endswith "pwsh.exe"
+| where CommandLine has_any ("-enc", "-EncodedCommand", "-nop", "-noprofile",
+                             "-w hidden", "-windowstyle hidden",
+                             "DownloadString", "DownloadFile", "IEX", "Invoke-Expression",
+                             "FromBase64String", "bypass")
+| project TimeGenerated, Computer, User, Image, CommandLine
+| order by TimeGenerated desc
+// Entity mapping: Account = User, Host = Computer, Process = Image

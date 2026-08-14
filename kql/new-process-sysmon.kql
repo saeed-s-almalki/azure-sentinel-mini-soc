@@ -1,0 +1,20 @@
+// Detection: Suspicious new process creation (LOLBins / recon tools)
+// Data: Sysmon EventID 1 (process create)
+// MITRE ATT&CK: T1059 (Command/Scripting), T1204 (User Execution)
+// Logic: known living-off-the-land / recon binaries spawning.
+
+let suspicious = dynamic(["whoami.exe","net.exe","net1.exe","nltest.exe","ipconfig.exe",
+                         "certutil.exe","bitsadmin.exe","mshta.exe","wscript.exe",
+                         "cscript.exe","rundll32.exe","regsvr32.exe"]);
+Event
+| where Source == "Microsoft-Windows-Sysmon" and EventID == 1
+| extend RD = parse_xml(EventData)
+| extend Image = tostring(RD.EventData.Data[4]["#text"]),
+         ParentImage = tostring(RD.EventData.Data[20]["#text"]),
+         CommandLine = tostring(RD.EventData.Data[10]["#text"]),
+         User = tostring(RD.EventData.Data[12]["#text"])
+| extend FileName = tolower(tostring(split(Image, "\\")[-1]))
+| where FileName in (suspicious)
+| project TimeGenerated, Computer, User, FileName, Image, ParentImage, CommandLine
+| order by TimeGenerated desc
+// Entity mapping: Account = User, Host = Computer, Process = Image

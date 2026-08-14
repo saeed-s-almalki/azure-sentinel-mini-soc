@@ -1,0 +1,18 @@
+// Detection: Brute-force / password-spray via failed logons
+// Data: Windows Security Events (EventID 4625 = failed logon)
+// MITRE ATT&CK: T1110 (Brute Force)
+// Logic: >= 10 failed logons from the same source in 15 minutes.
+
+let threshold = 10;
+let window = 15m;
+SecurityEvent
+| where EventID == 4625
+| summarize
+    FailedAttempts = count(),
+    Accounts = make_set(Account, 20),
+    FirstSeen = min(TimeGenerated),
+    LastSeen  = max(TimeGenerated)
+    by Computer, IpAddress = tostring(IpAddress), bin(TimeGenerated, window)
+| where FailedAttempts >= threshold
+| order by FailedAttempts desc
+// Entity mapping: Account = Accounts, Host = Computer, IP = IpAddress
