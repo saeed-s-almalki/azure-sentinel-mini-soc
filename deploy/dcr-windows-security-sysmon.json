@@ -1,0 +1,105 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Deploys the Azure Monitor Agent (AMA) to an Azure Arc-enabled server and a Data Collection Rule (DCR) that ships Windows Security Events (SecurityEvent table) and Sysmon operational logs (Event table) into the Microsoft Sentinel Log Analytics workspace. Part of the azure-sentinel-mini-soc lab."
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "uaenorth",
+      "metadata": { "description": "Region for the DCR and AMA extension (match the workspace/machine region)." }
+    },
+    "machineName": {
+      "type": "string",
+      "defaultValue": "RTS-SVR1",
+      "metadata": { "description": "Name of the Azure Arc-enabled machine to onboard." }
+    },
+    "workspaceResourceId": {
+      "type": "string",
+      "defaultValue": "/subscriptions/cfe74d5e-e191-4a2e-9292-cf9249226068/resourceGroups/law-sentinel-lab/providers/Microsoft.OperationalInsights/workspaces/law-sentinel-lab",
+      "metadata": { "description": "Resource ID of the Sentinel-enabled Log Analytics workspace." }
+    },
+    "dcrName": {
+      "type": "string",
+      "defaultValue": "dcr-win-security-sysmon",
+      "metadata": { "description": "Name of the Data Collection Rule." }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.HybridCompute/machines/extensions",
+      "apiVersion": "2022-11-10",
+      "name": "[format('{0}/AzureMonitorWindowsAgent', parameters('machineName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publisher": "Microsoft.Azure.Monitor",
+        "type": "AzureMonitorWindowsAgent",
+        "autoUpgradeMinorVersion": true,
+        "enableAutomaticUpgrade": true
+      }
+    },
+    {
+      "type": "Microsoft.Insights/dataCollectionRules",
+      "apiVersion": "2022-06-01",
+      "name": "[parameters('dcrName')]",
+      "location": "[parameters('location')]",
+      "kind": "Windows",
+      "properties": {
+        "dataSources": {
+          "windowsEventLogs": [
+            {
+              "name": "securityEvents",
+              "streams": [ "Microsoft-SecurityEvent" ],
+              "xPathQueries": [
+                "Security!*[System[(EventID=4624 or EventID=4625 or EventID=4634 or EventID=4648 or EventID=4672 or EventID=4688 or EventID=4720 or EventID=4726 or EventID=4728 or EventID=4732 or EventID=4740)]]"
+              ]
+            },
+            {
+              "name": "sysmonEvents",
+              "streams": [ "Microsoft-Event" ],
+              "xPathQueries": [ "Microsoft-Windows-Sysmon/Operational!*" ]
+            }
+          ]
+        },
+        "destinations": {
+          "logAnalytics": [
+            {
+              "name": "sentinelWorkspace",
+              "workspaceResourceId": "[parameters('workspaceResourceId')]"
+            }
+          ]
+        },
+        "dataFlows": [
+          {
+            "streams": [ "Microsoft-SecurityEvent" ],
+            "destinations": [ "sentinelWorkspace" ]
+          },
+          {
+            "streams": [ "Microsoft-Event" ],
+            "destinations": [ "sentinelWorkspace" ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Insights/dataCollectionRuleAssociations",
+      "apiVersion": "2022-06-01",
+      "name": "[format('dcra-{0}', parameters('dcrName'))]",
+      "scope": "[format('Microsoft.HybridCompute/machines/{0}', parameters('machineName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+      ],
+      "properties": {
+        "description": "Associates the Windows Security + Sysmon DCR with the Arc-enabled server.",
+        "dataCollectionRuleId": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+      }
+    }
+  ],
+  "outputs": {
+    "dcrId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+    }
+  }
+}
