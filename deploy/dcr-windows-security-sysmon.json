@@ -15,6 +15,11 @@
       "defaultValue": "RTS-SVR1",
       "metadata": { "description": "Name of the Azure Arc-enabled machine to onboard." }
     },
+    "machineLocation": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": { "description": "Region of the Azure Arc-enabled machine (the AMA extension must match it)." }
+    },
     "workspaceResourceId": {
       "type": "string",
       "defaultValue": "/subscriptions/cfe74d5e-e191-4a2e-9292-cf9249226068/resourceGroups/law-sentinel-lab/providers/Microsoft.OperationalInsights/workspaces/law-sentinel-lab",
@@ -29,9 +34,9 @@
   "resources": [
     {
       "type": "Microsoft.HybridCompute/machines/extensions",
-      "apiVersion": "2022-11-10",
+      "apiVersion": "2022-12-27",
       "name": "[format('{0}/AzureMonitorWindowsAgent', parameters('machineName'))]",
-      "location": "[parameters('location')]",
+      "location": "[parameters('machineLocation')]",
       "properties": {
         "publisher": "Microsoft.Azure.Monitor",
         "type": "AzureMonitorWindowsAgent",
