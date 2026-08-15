@@ -41,6 +41,21 @@ A running log of the actual hands-on build (with evidence screenshots in [`../as
 - Ran the generated `OnboardingScript.ps1` **inside RTS-SVR1** in an elevated PowerShell → device sign-in → verification succeeded → Azure Connected Machine Agent installed.
 - Machine registered in **Azure Arc → Machines**: status **🟢 Connected**, agent `1.67.03504.3207`, OS *Windows Server*, RG `law-sentinel-lab`.
 - 📷 `08-azure-arc-onboard-basics.jpg`, `09-arc-onboarding-script.jpg`, `10-arc-machine-connected.jpg`
-## Stage 5 — Connect data (AMA + DCR) + verify (KQL)  _(next)_
+## Stage 5 — Connect data (AMA + DCR) + Sysmon
+- **Portal note:** Microsoft has moved the Microsoft Sentinel experience (Overview, Content hub, Data connectors) from the Azure portal to the **Microsoft Defender portal** (unified SecOps at `security.microsoft.com`). The Azure-portal Sentinel blades now show *"This page has been moved to the Defender portal."*
+  - 📷 `12-defender-portal-unified-sentinel.jpg`
+- **Data collection deployed as Infrastructure-as-Code (ARM template):** [`../deploy/dcr-windows-security-sysmon.json`](../deploy/dcr-windows-security-sysmon.json), deployed via *Custom deployment → Deploy from URI* (GitHub raw). One deployment created three resources:
+  - **AMA** — `AzureMonitorWindowsAgent` extension on the Arc machine (v1.44.0.0, **Succeeded**).
+  - **DCR** — `dcr-win-security-sysmon` collecting Windows Security Events (→ `SecurityEvent`) and Sysmon operational logs (→ `Event`).
+  - **DCRA** — association binding the DCR to `RTS-SVR1`.
+  - 🐞 *Fix:* first deploy failed to submit because the AMA extension region (uaenorth) didn't match the Arc machine region (**eastus**). An extension must match its parent's region → set the extension `location` to the machine region; the DCR stays in the workspace region (uaenorth). Cross-region machine↔DCR↔workspace is supported.
+- **Sysmon** installed on RTS-SVR1 (v15.21) with the SwiftOnSecurity config → logs to `Microsoft-Windows-Sysmon/Operational`.
+  - 📷 `13-sysmon-installed.jpg`
+- Data path: `Sysmon + Security Events → AMA → DCR → Log Analytics workspace`.
+- **Ingestion verified** in Log Analytics → Logs (KQL mode): `SecurityEvent | summarize count() by EventID` returned rows (EventID 4624, 4672) — the `SecurityEvent` table is populating. 📷 `14-securityevent-ingestion-verified.jpg`
 ## Stage 6 — Analytics rules + MITRE ATT&CK  _(next)_
+## Stage 7 — Simulate attack + investigate + report
+- **Attack simulation (safe):** generated ~20 failed logons (EventID **4625**) on RTS-SVR1 via `net use \\localhost\IPC$ /user:hacker<n> <wrong-pass>` in a loop → maps to **MITRE ATT&CK T1110 (Brute Force)**. 📷 `15-simulate-failed-logons.jpg`
+- **Detection verified (end-to-end):** ran the brute-force KQL — `SecurityEvent | where EventID == 4625 | summarize FailedAttempts=count(), Accounts=make_set(Account,10) by IpAddress, Computer` — returned **1 row: 20 failed attempts** from `::1` against RTS-SVR1 targeting hacker1…hacker10. The detection logic caught the simulated attack. 📷 `16-detection-bruteforce.jpg`
+- _Next: promote the query to a scheduled Analytics/Detection rule → incident → investigation → report._
 ## Stage 7 — Simulate attack + investigate + report  _(next)_

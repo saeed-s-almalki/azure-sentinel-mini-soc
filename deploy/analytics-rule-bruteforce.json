@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Creates a Microsoft Sentinel Scheduled Analytics Rule that detects Windows failed-logon brute force (EventID 4625) and raises an incident. Mapped to MITRE ATT&CK T1110. Part of the azure-sentinel-mini-soc lab."
+  },
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "defaultValue": "law-sentinel-lab",
+      "metadata": { "description": "Name of the Sentinel-enabled Log Analytics workspace." }
+    },
+    "ruleId": {
+      "type": "string",
+      "defaultValue": "6b1e2d40-9f3a-4c8b-b21e-7c9a5d3f0011",
+      "metadata": { "description": "GUID identifier for the analytics rule." }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.SecurityInsights/alertRules",
+      "apiVersion": "2023-02-01",
+      "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}', parameters('workspaceName'))]",
+      "name": "[parameters('ruleId')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Windows - Failed logon brute force (4625)",
+        "description": "Detects 10+ failed logons (EventID 4625) from the same source against a host within the lookback window - a brute-force / password-spray pattern.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "SecurityEvent\n| where EventID == 4625\n| summarize FailedAttempts = count(), Accounts = make_set(Account, 20), StartTimeUtc = min(TimeGenerated), EndTimeUtc = max(TimeGenerated) by IpAddress = tostring(IpAddress), Computer\n| where FailedAttempts >= 10",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [ "CredentialAccess" ],
+        "techniques": [ "T1110" ],
+        "eventGroupingSettings": { "aggregationKind": "SingleAlert" },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities"
+          }
+        },
+        "entityMappings": [
+          {
+            "entityType": "Host",
+            "fieldMappings": [ { "identifier": "FullName", "columnName": "Computer" } ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [ { "identifier": "Address", "columnName": "IpAddress" } ]
+          }
+        ]
+      }
+    }
+  ]
+}
