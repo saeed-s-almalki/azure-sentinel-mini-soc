@@ -57,5 +57,8 @@ A running log of the actual hands-on build (with evidence screenshots in [`../as
 ## Stage 7 — Simulate attack + investigate + report
 - **Attack simulation (safe):** generated ~20 failed logons (EventID **4625**) on RTS-SVR1 via `net use \\localhost\IPC$ /user:hacker<n> <wrong-pass>` in a loop → maps to **MITRE ATT&CK T1110 (Brute Force)**. 📷 `15-simulate-failed-logons.jpg`
 - **Detection verified (end-to-end):** ran the brute-force KQL — `SecurityEvent | where EventID == 4625 | summarize FailedAttempts=count(), Accounts=make_set(Account,10) by IpAddress, Computer` — returned **1 row: 20 failed attempts** from `::1` against RTS-SVR1 targeting hacker1…hacker10. The detection logic caught the simulated attack. 📷 `16-detection-bruteforce.jpg`
-- _Next: promote the query to a scheduled Analytics/Detection rule → incident → investigation → report._
+- **Analytics rule (Detection-as-Code):** deployed [`../deploy/analytics-rule-bruteforce.json`](../deploy/analytics-rule-bruteforce.json) — a Sentinel **Scheduled** rule *"Windows - Failed logon brute force (4625)"* (severity Medium, MITRE **T1110 / Credential Access**, runs every 5 min over a 1h lookback, creates incidents, entity mappings Host + IP).
+- **Incident auto-generated:** the rule fired and raised the incident in the Microsoft Defender portal (Incidents) against `RTS-SVR1.rtsnetwork.local`, category *Credential access*. 📷 `17-incident-created.jpg`
+- **Investigation:** opened the incident *Attack story* — incident graph shows `::1` (source) → `RTS-SVR1` (target), 1 alert, first/last activity timestamps. 📷 `18-incident-investigation-attackstory.jpg`
+- End-to-end SOC loop proven: **attack → collect → detect → alert → incident → investigate.**
 ## Stage 7 — Simulate attack + investigate + report  _(next)_

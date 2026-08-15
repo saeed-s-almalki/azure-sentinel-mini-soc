@@ -35,12 +35,33 @@ azure-sentinel-mini-soc/
 │   ├── 01-lab-setup.md
 │   ├── 02-connect-data-sources.md
 │   ├── 03-analytics-rules.md
-│   └── 04-investigation.md
+│   ├── 04-investigation.md
+│   └── build-log.md          # ← real end-to-end deployment log (with evidence)
+├── deploy/          # Infrastructure-as-Code (ARM templates)
+│   ├── dcr-windows-security-sysmon.json   # AMA + Data Collection Rule
+│   └── analytics-rule-bruteforce.json     # Sentinel scheduled analytics rule
 ├── kql/             # KQL queries (verification + detections)
 ├── detections/      # Detection docs + MITRE ATT&CK mapping
-├── report/          # Incident report template
+├── report/          # Incident report (template + completed report)
 └── assets/          # Screenshots / evidence
 ```
+
+## ✅ Results (this lab was actually built)
+
+The full SOC loop was executed end-to-end against a live Azure tenant and a real on-prem Hyper-V server (`RTS-SVR1`), onboarded via Azure Arc:
+
+**attack → collect (AMA/DCR) → detect (KQL) → analytics rule (as code) → auto-incident → investigate**
+
+- 📓 Full deployment walkthrough with screenshots: [`docs/build-log.md`](docs/build-log.md)
+- 🧾 Completed incident report: [`report/incident-report-bruteforce.md`](report/incident-report-bruteforce.md)
+- 🏗️ Detection & data collection deployed as **Infrastructure-as-Code**: [`deploy/`](deploy/)
+
+| Evidence | Screenshot |
+|---|---|
+| Data ingested into `SecurityEvent` | `assets/screenshots/14-securityevent-ingestion-verified.jpg` |
+| Brute-force detection (20 failed logons) | `assets/screenshots/16-detection-bruteforce.jpg` |
+| Auto-generated incident | `assets/screenshots/17-incident-created.jpg` |
+| Incident investigation (attack story) | `assets/screenshots/18-incident-investigation-attackstory.jpg` |
 
 ## 🚀 Quick start
 
@@ -69,7 +90,7 @@ Sentinel bills on data ingestion. This lab is kept intentionally small and uses 
 
 ## 🧰 Tools
 
-Azure · Microsoft Sentinel · Log Analytics · Azure Arc · Azure Monitor Agent · Sysmon · KQL · MITRE ATT&CK · Hyper-V · Active Directory
+Azure · Microsoft Sentinel · Microsoft Defender portal (unified SecOps) · Log Analytics · Azure Arc · Azure Monitor Agent · Data Collection Rules · Sysmon · KQL · MITRE ATT&CK · Infrastructure-as-Code (ARM) · Hyper-V · Active Directory
 
 ## 📄 License
 
